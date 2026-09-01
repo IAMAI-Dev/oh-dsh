@@ -135,9 +135,12 @@ function useAboutUpdate(desktop: DesktopBridge | undefined): AboutUpdateView | n
   }
 }
 
-/** Copy + button state for one AboutUpdateSnapshot. */
+/** Copy + button state for one AboutUpdateSnapshot. The button always does
+ * what its label says: "Check for updates" runs the inline check, and only
+ * the explicit "Open updater" label opens the window — even when a startup
+ * check already knows an update is available. */
 function updateCopy(snapshot: AboutUpdateSnapshot | null, t: Translate<AboutMessage>): { status: string; action: string | null; openUpdater: boolean; ok: boolean } {
-  if (snapshot === null) return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: true, ok: false }
+  if (snapshot === null) return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: false, ok: false }
   switch (snapshot.status) {
     case 'checking': return { status: t('about.update-state.checking'), action: null, openUpdater: false, ok: false }
     case 'not-available': return { status: t('about.update-state.up-to-date'), action: t('about.update-button'), openUpdater: false, ok: true }
@@ -145,7 +148,7 @@ function updateCopy(snapshot: AboutUpdateSnapshot | null, t: Translate<AboutMess
     case 'downloading': return { status: t('about.update-state.downloading'), action: null, openUpdater: false, ok: false }
     case 'downloaded': return { status: t('about.update-state.downloaded'), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
     case 'error': return { status: t('about.update-state.error'), action: t('about.update-button'), openUpdater: false, ok: false }
-    default: return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: true, ok: false }
+    default: return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: false, ok: false }
   }
 }
 
@@ -158,8 +161,9 @@ function UpdateCard({ desktop, openUpdater, t }: { desktop: DesktopBridge | unde
   const chipClass = copy.ok ? 'oh-dsh-about-chip oh-dsh-about-chip-ok' : 'oh-dsh-about-chip'
   const checking = view !== null && (view.busy || snapshot?.status === 'checking')
   const onAction = (): void => {
-    if (view === null || copy.openUpdater) { openUpdater(); return }
-    if (snapshot?.status === 'checking') return
+    if (copy.openUpdater) { openUpdater(); return }
+    if (checking) return
+    if (view === null) { openUpdater(); return }
     view.check()
   }
   return (
