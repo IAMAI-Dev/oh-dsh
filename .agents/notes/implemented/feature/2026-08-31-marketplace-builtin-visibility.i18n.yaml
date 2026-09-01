@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-31-marketplace-builtin-visibility.md
-2026-08-31-marketplace-builtin-visibility.md: 8b4d3f1ce885846b85412f8eb969ede9cb877377
-2026-08-31-marketplace-builtin-visibility.zh.md: 2f086cdf66922d3aa58b4608bd0cb048f4ada934
+2026-08-31-marketplace-builtin-visibility.md: 7d420e2cf0803ed373f9f8b0f17e67f9a094bee1
+2026-08-31-marketplace-builtin-visibility.zh.md: 4094247e6b5fdf998782af1b408c27b9c5889f28

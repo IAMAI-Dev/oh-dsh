@@ -1077,7 +1077,12 @@ function MarketplaceSurface({ bridge, locale, translate, view }: {
                     const checked = event.target.checked
                     setShowBuiltins(checked)
                     if (!checked) {
-                      if (categoryFilter === BUILTIN_CATEGORY_FILTER) setCategoryFilter('all')
+                      const remainingCategories = new Set((snapshot?.catalog ?? [])
+                        .filter(plugin => !plugin.builtin)
+                        .map(plugin => plugin.category))
+                      if (categoryFilter !== 'all' && !remainingCategories.has(categoryFilter)) {
+                        setCategoryFilter('all')
+                      }
                       if (snapshot?.catalog.some(plugin => (
                         plugin.id === selectedId && plugin.builtin
                       )) === true) setSelectedId(null)

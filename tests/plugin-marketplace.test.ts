@@ -1286,6 +1286,17 @@ test('marketplace navigation preserves the Settings footer geometry', () => {
   assert.doesNotMatch(client, /parent\.insertBefore\(this\.#entry, settings\)/)
 })
 
+test('browser marketplace resets category filters removed with built-ins', () => {
+  const client = readFileSync(new URL(
+    '../plugins/plugin-marketplace/src/client/plugin.tsx',
+    import.meta.url,
+  ), 'utf8')
+
+  assert.match(client, /const remainingCategories = new Set\(\(snapshot\?\.catalog \?\? \[\]\)[\s\S]*?\.filter\(plugin => !plugin\.builtin\)[\s\S]*?\.map\(plugin => plugin\.category\)\)/)
+  assert.match(client, /categoryFilter !== 'all' && !remainingCategories\.has\(categoryFilter\)/)
+  assert.doesNotMatch(client, /categoryFilter === BUILTIN_CATEGORY_FILTER\) setCategoryFilter\('all'\)/)
+})
+
 test('marketplace startup disables manual refresh until refresh settles', () => {
   const client = readFileSync(new URL(
     '../plugins/plugin-marketplace/src/client/plugin.tsx',
