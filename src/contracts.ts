@@ -87,6 +87,8 @@ export interface DesktopBridge {
   menuBarLabels(): Promise<string[]>
   /** Apply the renderer's active locale and return refreshed top-level labels. */
   setMenuLocale(locale: 'en' | 'zh'): Promise<string[]>
+  /** Open the software update window (check/download/install entry). */
+  openUpdater(): Promise<void>
   onCommand(listener: (command: DesktopCommand) => void): () => void
   /** Subscribe to native maximize and restore events. */
   onWindowState(listener: (state: DesktopWindowState) => void): () => void

@@ -22,6 +22,9 @@ const bridge: DesktopBridge = Object.freeze({
   setMenuLocale: async (locale: 'en' | 'zh'): Promise<string[]> => {
     return await ipcRenderer.invoke('desktop:set-menu-locale', locale) as string[]
   },
+  openUpdater: async (): Promise<void> => {
+    await ipcRenderer.invoke('desktop:open-updater')
+  },
   onCommand: (listener: (command: DesktopCommand) => void): (() => void) => {
     const wrapped = (_event: Electron.IpcRendererEvent, command: DesktopCommand): void => { listener(command) }
     ipcRenderer.on('desktop:command', wrapped)

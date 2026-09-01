@@ -1235,6 +1235,12 @@ function installIpc(): void {
     return desktopInfo(preview)
   })
   ipcMain.handle('desktop:get-runtime-snapshot', () => desktopRuntimeSnapshot())
+  // The About settings page reuses the isolated update window; the update
+  // state and command channels stay gated to that window.
+  ipcMain.handle('desktop:open-updater', event => {
+    if (event.sender !== mainWindow?.webContents) throw new Error('untrusted updater sender')
+    void openUpdateWindow()
+  })
   ipcMain.handle('desktop:plugin-marketplace-snapshot', (event) => {
     if (event.sender !== mainWindow?.webContents) throw new Error('untrusted marketplace sender')
     if (marketplace === undefined) throw new Error('plugin marketplace is not initialized')
