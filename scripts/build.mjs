@@ -21,7 +21,9 @@ const versionDefine = {
 // checkout only drops that row instead of failing the build.
 function aboutVersionDefines(root) {
   const readJson = path => JSON.parse(readFileSync(path, 'utf8'))
-  const sourceVersion = readJson(join(root, 'dsh-source.json')).version ?? '0.0.0'
+  const sourceManifest = readJson(join(root, 'dsh-source.json'))
+  const sourceVersion = sourceManifest.version ?? '0.0.0'
+  const sourcePackage = String(sourceManifest.package ?? '')
   const plugins = readdirSync(join(root, 'plugins'), { withFileTypes: true })
     .filter(entry => entry.isDirectory())
     .map(entry => {
@@ -48,6 +50,7 @@ function aboutVersionDefines(root) {
   ]
   return {
     __OH_DSH_SOURCE_VERSION__: JSON.stringify(sourceVersion),
+    __OH_DSH_SOURCE_PACKAGE__: JSON.stringify(sourcePackage),
     __OH_DSH_PLUGIN_VERSIONS__: JSON.stringify(plugins),
     __OH_DSH_DEPENDENCY_VERSIONS__: JSON.stringify(dependencies),
   }
@@ -211,7 +214,7 @@ for (const plugin of pluginPackages) {
       target: 'es2022',
       sourcemap: true,
       logLevel: 'info',
-      loader: { '.css': 'text' },
+      loader: { '.css': 'text', '.png': 'dataurl' },
       external: [
         ...(plugin.clientExternal ?? []),
         'react',

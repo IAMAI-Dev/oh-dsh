@@ -30,6 +30,7 @@ test('build injects the About version facts as bundle literals', () => {
   const buildScript = read('scripts/build.mjs')
   for (const constant of [
     '__OH_DSH_SOURCE_VERSION__',
+    '__OH_DSH_SOURCE_PACKAGE__',
     '__OH_DSH_PLUGIN_VERSIONS__',
     '__OH_DSH_DEPENDENCY_VERSIONS__',
   ]) {

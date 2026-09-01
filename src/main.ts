@@ -1036,7 +1036,7 @@ function buildMenu(locale: OhDshLocale = menuLocale): void {
     {
       label: PRODUCT_NAME,
       submenu: [
-        { role: 'about', label: text.about },
+        { label: text.about, click: () => { sendCommand({ type: 'show-about' }) } },
         { type: 'separator' },
         { label: text.checkUpdates, click: () => { void openUpdateWindow() } },
         { type: 'separator' },

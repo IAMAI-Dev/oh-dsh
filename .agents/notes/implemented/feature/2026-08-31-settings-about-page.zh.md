@@ -27,8 +27,9 @@ DeepSeek Harness 版本（`dsh-source.json`）、内置插件版本
 上角还有一个 ghost 按钮用于在文件管理器中打开当前 profile 目录。
 
 版本数据从不在运行时读取文件。`scripts/build.mjs` 在构建期读取仓库清单，
-在既有 `__OH_DSH_BUILD_VERSION__` 之外注入三个 esbuild `define` 常量：
-`__OH_DSH_SOURCE_VERSION__`（来自 `dsh-source.json`）、
+在既有 `__OH_DSH_BUILD_VERSION__` 之外注入四个 esbuild `define` 常量：
+`__OH_DSH_SOURCE_VERSION__` 与 `__OH_DSH_SOURCE_PACKAGE__`（固定上游发布
+的版本号与 npm 包名，来自 `dsh-source.json`）、
 `__OH_DSH_PLUGIN_VERSIONS__`（每个 `plugins/*/package.json` 加上固定的上游
 submodule 清单，排序后注入）和 `__OH_DSH_DEPENDENCY_VERSIONS__`（根清单中
 的 electron、electron-updater、semver）。`plugins/about/src/client/versions.ts`

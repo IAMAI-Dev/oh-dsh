@@ -1,3 +1,13 @@
+.oh-dsh-about,
+.oh-dsh-about *,
+.oh-dsh-about *::before,
+.oh-dsh-about *::after {
+  /* The section mounts inside the host settings page, which ships no global
+     border-box reset; without this the rows' horizontal padding renders
+     outside the card grid track and overflows the card. */
+  box-sizing: border-box;
+}
+
 .oh-dsh-about {
   --oh-about-chip-bg: color-mix(in srgb, var(--dsw-alias-brand-primary, #6d5ce6) 12%, transparent);
   --oh-about-badge-bg: color-mix(in srgb, var(--dsw-alias-brand-primary, #6d5ce6) 12%, transparent);
@@ -49,17 +59,27 @@
 }
 
 .oh-dsh-about-mark {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 68px;
   height: 68px;
   margin-bottom: 6px;
+  padding: 14px;
   border-radius: 18px;
-  background: var(--dsw-alias-brand-primary, #6d5ce6);
-  color: var(--dsw-alias-brand-primary-invert, #fff);
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  /* The packaged app icon is the dsh-whale silhouette; resolve it like the
+     menubar brand does: black whale on a light tile, white whale on a dark
+     one, tile driven by the theme's brand mix. */
+  background: var(--oh-about-chip-bg);
+  filter: brightness(0);
+  opacity: 0.85;
+  /* Dragging the mark out of the page would drop it as an image attachment
+     into a session composer, so the hero image opts out of native drags. */
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+body[data-ds-dark-theme] .oh-dsh-about-mark {
+  filter: brightness(0) invert(1);
+  opacity: 0.9;
 }
 
 .oh-dsh-about-name { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 0.2px; }
@@ -166,7 +186,8 @@ button.oh-dsh-about-row:hover { background: var(--dsw-alias-interactive-bg-hover
 
 .oh-dsh-about-versions {
   display: grid;
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 2px 18px;
   margin: 0;
   padding: 4px 14px 12px 56px;
 }
@@ -180,6 +201,13 @@ button.oh-dsh-about-row:hover { background: var(--dsw-alias-interactive-bg-hover
   font-size: 12px;
 }
 
+.oh-dsh-about-empty {
+  grid-column: 1 / -1;
+  min-height: 26px;
+  color: var(--dsw-alias-label-secondary, #656d76);
+  font-size: 12px;
+}
+
 .oh-dsh-about-version dt {
   min-width: 0;
   overflow: hidden;
@@ -187,7 +215,13 @@ button.oh-dsh-about-row:hover { background: var(--dsw-alias-interactive-bg-hover
   white-space: nowrap;
   color: var(--dsw-alias-label-secondary, #656d76);
 }
-.oh-dsh-about-version dd { margin: 0; font-variant-numeric: tabular-nums; }
+.oh-dsh-about-version dd {
+  margin: 0;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--dsw-alias-interactive-bg-hover, rgb(0 0 0 / 5%));
+  font-variant-numeric: tabular-nums;
+}
 
 /* Software update row. */
 .oh-dsh-about-button { padding: 6px 14px; font-size: 12px; }

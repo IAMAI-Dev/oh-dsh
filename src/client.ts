@@ -586,6 +586,44 @@ function showSettings(): void {
   findSettingsButton()?.click()
 }
 
+/** Select the settings nav entry whose label matches, e.g. the About page. */
+function selectSettingsSection(pattern: RegExp): boolean {
+  const dialog = document.querySelector<HTMLDivElement>('[role="dialog"][aria-modal="true"]')
+  const nav = dialog?.querySelector('nav')
+  if (nav === null || nav === undefined) return false
+  const cell = [...nav.querySelectorAll<HTMLButtonElement>('button')]
+    .find(button => pattern.test([
+      button.textContent,
+      button.getAttribute('aria-label'),
+      button.getAttribute('title'),
+    ].filter(Boolean).join(' ')))
+  if (cell === undefined) return false
+  cell.click()
+  return true
+}
+
+function showAbout(): void {
+  // The About nav lives inside the settings panel, so open the dialog first.
+  // Clicking the trigger when the dialog is already open would close it, so
+  // only click while it is closed.
+  const dialogOpen = () => document.querySelector('[role="dialog"][aria-modal="true"]') !== null
+  if (!dialogOpen()) {
+    findSettingsButton()?.click()
+  }
+  // The panel and its nav mount on React's next commit after the trigger
+  // click (or after the settings plugin boots), so poll across frames until
+  // the nav renders, then select About. A timeout keeps an early menu click
+  // from looping forever if the settings trigger never appears.
+  const started = performance.now()
+  const attempt = (): void => {
+    if (selectSettingsSection(/about|关于/i)) return
+    if (performance.now() - started < 2_000) {
+      requestAnimationFrame(attempt)
+    }
+  }
+  attempt()
+}
+
 async function openPaths(workspaces: WorkspacesService, paths: readonly string[]): Promise<void> {
   for (const path of paths) {
     const workspace = await workspaces.create({ path })
@@ -614,6 +652,9 @@ function dispatch(
       return
     case 'show-settings':
       showSettings()
+      return
+    case 'show-about':
+      showAbout()
       return
     case 'toggle-sidebar':
       panels.toggleSidebar()

@@ -13,6 +13,7 @@ export type AboutMessage =
   | 'about.components.plugins-description'
   | 'about.components.dependencies'
   | 'about.components.dependencies-description'
+  | 'about.versions-empty'
   | 'about.section.update'
   | 'about.update-button'
   | 'about.update-hint'
@@ -36,6 +37,7 @@ export const ABOUT_MESSAGES: Record<'en' | 'zh', Record<AboutMessage, string>> =
     'about.components.plugins-description': 'Built-in capability providers shipped with this build.',
     'about.components.dependencies': 'Dependencies',
     'about.components.dependencies-description': 'Key toolchain versions this build ships with.',
+    'about.versions-empty': 'No entries recorded in this build.',
     'about.section.update': 'Software update',
     'about.update-button': 'Check for updates',
     'about.update-hint': 'Opens the software update window.',
@@ -58,6 +60,7 @@ export const ABOUT_MESSAGES: Record<'en' | 'zh', Record<AboutMessage, string>> =
     'about.components.plugins-description': '随此构建一同发布的内置能力插件。',
     'about.components.dependencies': '依赖信息',
     'about.components.dependencies-description': '此构建所依赖的关键工具链版本。',
+    'about.versions-empty': '此构建未记录任何条目。',
     'about.section.update': '软件更新',
     'about.update-button': '检查更新',
     'about.update-hint': '将打开软件更新窗口。',

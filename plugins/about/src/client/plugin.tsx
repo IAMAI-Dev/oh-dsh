@@ -4,6 +4,7 @@ import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import aboutCss from './about.css'
 import { ABOUT_MESSAGES, type AboutMessage } from './i18n.ts'
 import { aboutVersions, type VersionEntry } from './versions.ts'
+import productIcon from '../../../../assets/icons/512x512.png'
 
 /** Product version injected by scripts/build.mjs like src/version.ts. */
 declare const __OH_DSH_BUILD_VERSION__: string
@@ -123,12 +124,14 @@ function ComponentRow({ entries, iconPath, t, title, description }: {
       </button>
       {open && (
         <dl className="oh-dsh-about-versions">
-          {entries.map(entry => (
-            <div className="oh-dsh-about-version" key={entry.id}>
-              <dt>{entry.id}</dt>
-              <dd>{entry.version}</dd>
-            </div>
-          ))}
+          {entries.length === 0
+            ? <div className="oh-dsh-about-empty">{t('about.versions-empty')}</div>
+            : entries.map(entry => (
+                <div className="oh-dsh-about-version" key={entry.id}>
+                  <dt>{entry.id}</dt>
+                  <dd>{entry.version}</dd>
+                </div>
+              ))}
         </dl>
       )}
     </div>
@@ -142,7 +145,12 @@ function AboutSectionRow({ openUpdater, t }: AboutRowProps): JSX.Element {
   return (
     <div className="oh-dsh-about">
       <header className="oh-dsh-about-hero">
-        <div className="oh-dsh-about-mark">Oh</div>
+        <img
+          alt=""
+          className="oh-dsh-about-mark"
+          draggable={false}
+          src={productIcon}
+        />
         <h3 className="oh-dsh-about-name">{t('about.product-name')}</h3>
         <p className="oh-dsh-about-subtitle">{t('about.product-subtitle')}</p>
         <span className="oh-dsh-about-badge">
@@ -167,7 +175,7 @@ function AboutSectionRow({ openUpdater, t }: AboutRowProps): JSX.Element {
               <strong>{t('about.runtime.package')}</strong>
               <small>{t('about.runtime.package-description')}</small>
             </span>
-            <span className="oh-dsh-about-pill">{versions.sourceVersion}</span>
+            <span className="oh-dsh-about-pill">{versions.sourcePackage}</span>
           </div>
         </div>
       </section>

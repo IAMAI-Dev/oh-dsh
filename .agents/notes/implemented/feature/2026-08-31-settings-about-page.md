@@ -32,9 +32,10 @@ hex values. On Desktop a ghost chip in the top-right corner reveals the
 active profile directory.
 
 Version facts never come from runtime file reads. `scripts/build.mjs` reads
-the repository manifests at build time and injects three esbuild `define`
+the repository manifests at build time and injects four esbuild `define`
 constants alongside the existing `__OH_DSH_BUILD_VERSION__`:
-`__OH_DSH_SOURCE_VERSION__` (from `dsh-source.json`),
+`__OH_DSH_SOURCE_VERSION__` and `__OH_DSH_SOURCE_PACKAGE__` (the pinned
+upstream release's version and npm identity from `dsh-source.json`),
 `__OH_DSH_PLUGIN_VERSIONS__` (each `plugins/*/package.json` plus the pinned
 upstream submodule manifests, sorted), and `__OH_DSH_DEPENDENCY_VERSIONS__`
 (electron, electron-updater, semver from the root manifest).

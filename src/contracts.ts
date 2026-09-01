@@ -9,6 +9,7 @@ export type DesktopCommand =
   | { type: 'new-session' }
   | { type: 'open-paths'; paths: string[] }
   | { type: 'show-settings' }
+  | { type: 'show-about' }
   | { type: 'toggle-bottom-panel' }
   | { type: 'toggle-panel-maximized' }
   | { type: 'toggle-pinned-summary' }
