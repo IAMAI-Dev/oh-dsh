@@ -55,6 +55,20 @@ export type DesktopUpdateState =
   | { status: 'unsupported'; currentVersion: string; platform: DesktopUpdatePlatform; message: string; releaseUrl: string | null }
   | { status: 'error'; currentVersion: string; stage: 'check' | 'download' | 'verify' | 'install'; code: string; message: string; releaseUrl: string | null; retryable: boolean }
 
+/**
+ * The About page's read-mostly projection of the update state: enough to
+ * answer "is there an update?" and link to the update window, never enough
+ * to drive downloads or installs from the main window.
+ */
+export type AboutUpdateSnapshot =
+  | { status: 'idle'; currentVersion: string }
+  | { status: 'checking' }
+  | { status: 'not-available'; latestVersion: string }
+  | { status: 'available'; latestVersion: string }
+  | { status: 'downloading' }
+  | { status: 'downloaded' }
+  | { status: 'error' }
+
 export type DesktopUpdateCommand =
   | { type: 'check' }
   | { type: 'download' }
@@ -90,6 +104,15 @@ export interface DesktopBridge {
   setMenuLocale(locale: 'en' | 'zh'): Promise<string[]>
   /** Open the software update window (check/download/install entry). */
   openUpdater(): Promise<void>
+  /**
+   * Narrow About-page view of the update state: read-only summary plus a
+   * check trigger. Downloads and installs stay inside the update window.
+   */
+  aboutUpdate: {
+    getSnapshot(): Promise<AboutUpdateSnapshot>
+    check(): Promise<AboutUpdateSnapshot>
+    onState(listener: (snapshot: AboutUpdateSnapshot) => void): () => void
+  }
   onCommand(listener: (command: DesktopCommand) => void): () => void
   /** Subscribe to native maximize and restore events. */
   onWindowState(listener: (state: DesktopWindowState) => void): () => void

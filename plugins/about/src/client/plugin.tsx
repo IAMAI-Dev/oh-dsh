@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import type { DesktopBridge } from '../../../../src/contracts.ts'
+import { useEffect, useState } from 'react'
+import type { AboutUpdateSnapshot, DesktopBridge } from '../../../../src/contracts.ts'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import aboutCss from './about.css'
 import { ABOUT_MESSAGES, type AboutMessage } from './i18n.ts'
@@ -93,6 +93,100 @@ function IconChip({ path }: { path: string }): JSX.Element {
     <span className="oh-dsh-about-chip">
       <Icon path={path} size={15} />
     </span>
+  )
+}
+
+interface AboutUpdateView {
+  snapshot: AboutUpdateSnapshot | null
+  busy: boolean
+  check(): void
+}
+
+/**
+ * Subscribe to the desktop update state's narrow About projection. Web has
+ * no desktop bridge and renders no update card at all; a desktop bridge
+ * without the projection (older main process) renders the legacy button.
+ */
+function useAboutUpdate(desktop: DesktopBridge | undefined): AboutUpdateView | null {
+  const [snapshot, setSnapshot] = useState<AboutUpdateSnapshot | null>(null)
+  const [busy, setBusy] = useState(false)
+  const projection = desktop?.aboutUpdate
+  useEffect(() => {
+    if (projection === undefined) return
+    let live = true
+    const apply = (next: AboutUpdateSnapshot): void => {
+      if (live) setSnapshot(next)
+    }
+    void projection.getSnapshot().then(apply).catch(() => {})
+    const unsubscribe = projection.onState(apply)
+    return () => {
+      live = false
+      unsubscribe()
+    }
+  }, [projection])
+  if (projection === undefined) return null
+  return {
+    snapshot,
+    busy: snapshot?.status === 'checking' || busy,
+    check: () => {
+      setBusy(true)
+      void projection.check().finally(() => { setBusy(false) })
+    },
+  }
+}
+
+/** Copy + button state for one AboutUpdateSnapshot. */
+function updateCopy(snapshot: AboutUpdateSnapshot | null, t: Translate<AboutMessage>): { status: string; action: string | null; openUpdater: boolean; ok: boolean } {
+  if (snapshot === null) return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: true, ok: false }
+  switch (snapshot.status) {
+    case 'checking': return { status: t('about.update-state.checking'), action: null, openUpdater: false, ok: false }
+    case 'not-available': return { status: t('about.update-state.up-to-date'), action: t('about.update-button'), openUpdater: false, ok: true }
+    case 'available': return { status: t('about.update-state.available', { version: snapshot.latestVersion }), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
+    case 'downloading': return { status: t('about.update-state.downloading'), action: null, openUpdater: false, ok: false }
+    case 'downloaded': return { status: t('about.update-state.downloaded'), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
+    case 'error': return { status: t('about.update-state.error'), action: t('about.update-button'), openUpdater: false, ok: false }
+    default: return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: true, ok: false }
+  }
+}
+
+/** The software-update card: inline check with state, opening the trusted
+ * update window for downloads and installs. */
+function UpdateCard({ desktop, openUpdater, t }: { desktop: DesktopBridge | undefined; openUpdater: () => void; t: Translate<AboutMessage> }): JSX.Element {
+  const view = useAboutUpdate(desktop)
+  const snapshot = view?.snapshot ?? null
+  const copy = updateCopy(view !== null ? snapshot : null, t)
+  const chipClass = copy.ok ? 'oh-dsh-about-chip oh-dsh-about-chip-ok' : 'oh-dsh-about-chip'
+  const checking = view !== null && (view.busy || snapshot?.status === 'checking')
+  const onAction = (): void => {
+    if (view === null || copy.openUpdater) { openUpdater(); return }
+    if (snapshot?.status === 'checking') return
+    view.check()
+  }
+  return (
+    <section className="oh-dsh-about-group">
+      <h4>{t('about.section.update')}</h4>
+      <div className="oh-dsh-about-card">
+        <div className="oh-dsh-about-row">
+          <span className={chipClass}>
+            <Icon path={ICON_UPDATE} size={15} />
+          </span>
+          <span className="oh-dsh-about-copy">
+            <strong>{t('about.product-name')} {productVersion()}</strong>
+            <small>{copy.status}</small>
+          </span>
+          {copy.action !== null && (
+            <button
+              className="oh-dsh-about-button"
+              disabled={checking && !copy.openUpdater}
+              type="button"
+              onClick={onAction}
+            >
+              {copy.action}
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -200,29 +294,7 @@ function AboutSectionRow({ openUpdater, t }: AboutRowProps): JSX.Element {
         </div>
       </section>
 
-      {desktopAvailable && (
-        <section className="oh-dsh-about-group">
-          <h4>{t('about.section.update')}</h4>
-          <div className="oh-dsh-about-card">
-            <div className="oh-dsh-about-row">
-              <span className="oh-dsh-about-chip oh-dsh-about-chip-ok">
-                <Icon path={ICON_UPDATE} size={15} />
-              </span>
-              <span className="oh-dsh-about-copy">
-                <strong>{t('about.product-name')} {productVersion()}</strong>
-                <small>{t('about.update-hint')}</small>
-              </span>
-              <button
-                className="oh-dsh-about-button"
-                type="button"
-                onClick={() => { openUpdater() }}
-              >
-                {t('about.update-button')}
-              </button>
-            </div>
-          </div>
-        </section>
-      )}
+      {desktopAvailable && <UpdateCard desktop={desktop} openUpdater={openUpdater} t={t} />}
 
       <footer className="oh-dsh-about-footer">
         <div className="oh-dsh-about-links">

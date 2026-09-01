@@ -44,6 +44,7 @@ import {
   type DesktopUpdateCommand,
   type DesktopWindowState,
   type DesktopUpdateState,
+  type AboutUpdateSnapshot,
 } from './contracts.ts'
 import type { OhDshLocale } from '../plugins/shared/i18n.ts'
 import {
@@ -454,6 +455,12 @@ function sendUpdateState(state: DesktopUpdateState): void {
   updateWindow.webContents.send('desktop:update:state', state)
 }
 
+/** Mirror a narrow projection of update state changes to the main window. */
+function sendAboutUpdateState(state: DesktopUpdateState): void {
+  if (mainWindow === undefined || mainWindow.isDestroyed()) return
+  mainWindow.webContents.send('desktop:about-update:state', aboutUpdateSnapshot(state))
+}
+
 let updaterProxyBypassed = false
 
 function updaterSession() {
@@ -501,6 +508,7 @@ async function getUpdateManager(): Promise<DesktopUpdateManager> {
   })
   updateManager = manager
   manager.subscribe(sendUpdateState)
+  manager.subscribe(sendAboutUpdateState)
   manager.subscribe(notifyAvailableUpdate)
   return manager
 }
@@ -575,6 +583,24 @@ function parseRuntimeUpdateCommand(raw: unknown): RuntimeUpdateCommand {
 function assertUpdateWindowSender(event: { sender: Electron.WebContents }): void {
   if (updateWindow === undefined || updateWindow.isDestroyed() || event.sender !== updateWindow.webContents) {
     throw new Error('update IPC is only available to the local update window')
+  }
+}
+
+/** Project the full update state down to the About page's read-mostly view. */
+function aboutUpdateSnapshot(state: DesktopUpdateState): AboutUpdateSnapshot {
+  switch (state.status) {
+    case 'idle': return { status: 'idle', currentVersion: state.currentVersion }
+    case 'checking': return { status: 'checking' }
+    case 'not-available': return { status: 'not-available', latestVersion: state.checkedVersion }
+    case 'available': return { status: 'available', latestVersion: state.latestVersion }
+    case 'downloading': return { status: 'downloading' }
+    case 'downloaded': return { status: 'downloaded' }
+    case 'scheduled': return { status: 'downloaded' }
+    case 'cancelled': return { status: 'idle', currentVersion: state.currentVersion }
+    case 'unsupported': return { status: 'idle', currentVersion: state.currentVersion }
+    case 'error': return state.retryable === true && state.stage === 'check'
+      ? { status: 'error' }
+      : { status: 'idle', currentVersion: state.currentVersion }
   }
 }
 
@@ -1236,10 +1262,19 @@ function installIpc(): void {
   })
   ipcMain.handle('desktop:get-runtime-snapshot', () => desktopRuntimeSnapshot())
   // The About settings page reuses the isolated update window; the update
-  // state and command channels stay gated to that window.
+  // state and command channels stay gated to that window. About gets a
+  // read-mostly projection: snapshot + check only, no download/install.
   ipcMain.handle('desktop:open-updater', event => {
     if (event.sender !== mainWindow?.webContents) throw new Error('untrusted updater sender')
     void openUpdateWindow()
+  })
+  ipcMain.handle('desktop:about-update:get-state', async event => {
+    if (event.sender !== mainWindow?.webContents) throw new Error('untrusted about-update sender')
+    return aboutUpdateSnapshot((await getUpdateManager()).getState())
+  })
+  ipcMain.handle('desktop:about-update:check', async event => {
+    if (event.sender !== mainWindow?.webContents) throw new Error('untrusted about-update sender')
+    return aboutUpdateSnapshot(await (await getUpdateManager()).check())
   })
   ipcMain.handle('desktop:plugin-marketplace-snapshot', (event) => {
     if (event.sender !== mainWindow?.webContents) throw new Error('untrusted marketplace sender')

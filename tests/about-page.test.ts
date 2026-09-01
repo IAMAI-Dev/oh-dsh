@@ -58,6 +58,21 @@ test('desktop About opens the gated update window through one IPC', () => {
   assert.match(main, /assertUpdateWindowSender/)
 })
 
+test('the About update card uses a read-mostly check-only projection', () => {
+  const contracts = read('src/contracts.ts')
+  assert.match(contracts, /type AboutUpdateSnapshot/)
+  const main = read('src/main.ts')
+  for (const channel of ['desktop:about-update:get-state', 'desktop:about-update:check']) {
+    assert.match(main, new RegExp(channel), `missing About update channel ${channel}`)
+  }
+  // Downloads and installs stay behind the update window's gate: no About
+  // channel may forward a download/install command.
+  assert.doesNotMatch(main, /desktop:about-update:command/)
+  const about = read('plugins/about/src/client/plugin.tsx')
+  assert.match(about, /projection\.check\(\)/)
+  assert.doesNotMatch(about, /\.download\(\)|\.installNow\(\)/)
+})
+
 test('about styles follow the DSH theme instead of hard-coded colors', () => {
   const css = read('plugins/about/src/client/about.css')
   // Theme-driven: brand and success tokens drive every accent; hex values

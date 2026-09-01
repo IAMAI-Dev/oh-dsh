@@ -17,6 +17,13 @@ export type AboutMessage =
   | 'about.section.update'
   | 'about.update-button'
   | 'about.update-hint'
+  | 'about.update-state.checking'
+  | 'about.update-state.up-to-date'
+  | 'about.update-state.available'
+  | 'about.update-state.open-updater'
+  | 'about.update-state.downloading'
+  | 'about.update-state.downloaded'
+  | 'about.update-state.error'
   | 'about.footer.github'
   | 'about.footer.license'
   | 'about.footer.copyright'
@@ -40,7 +47,14 @@ export const ABOUT_MESSAGES: Record<'en' | 'zh', Record<AboutMessage, string>> =
     'about.versions-empty': 'No entries recorded in this build.',
     'about.section.update': 'Software update',
     'about.update-button': 'Check for updates',
-    'about.update-hint': 'Opens the software update window.',
+    'about.update-hint': 'Check for updates and open the update window.',
+    'about.update-state.checking': 'Checking for updates...',
+    'about.update-state.up-to-date': 'You are up to date.',
+    'about.update-state.available': 'Version {version} is available.',
+    'about.update-state.open-updater': 'Open updater',
+    'about.update-state.downloading': 'Downloading in the update window...',
+    'about.update-state.downloaded': 'Update ready — finish it in the update window.',
+    'about.update-state.error': 'The last check failed. Try again.',
     'about.footer.github': 'GitHub',
     'about.footer.license': 'License',
     'about.footer.copyright': '© 2026 Oh-DSH Team. All rights reserved.',
@@ -63,7 +77,14 @@ export const ABOUT_MESSAGES: Record<'en' | 'zh', Record<AboutMessage, string>> =
     'about.versions-empty': '此构建未记录任何条目。',
     'about.section.update': '软件更新',
     'about.update-button': '检查更新',
-    'about.update-hint': '将打开软件更新窗口。',
+    'about.update-hint': '检查更新并打开更新窗口。',
+    'about.update-state.checking': '正在检查更新…',
+    'about.update-state.up-to-date': '已是最新版本。',
+    'about.update-state.available': '发现新版本 {version}。',
+    'about.update-state.open-updater': '打开更新',
+    'about.update-state.downloading': '正在更新窗口中下载…',
+    'about.update-state.downloaded': '更新已就绪——请在更新窗口中完成安装。',
+    'about.update-state.error': '上次检查失败，请重试。',
     'about.footer.github': 'GitHub',
     'about.footer.license': '许可证',
     'about.footer.copyright': '© 2026 Oh-DSH Team. All rights reserved.',
