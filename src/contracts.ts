@@ -67,6 +67,7 @@ export type AboutUpdateSnapshot =
   | { status: 'available'; latestVersion: string }
   | { status: 'downloading' }
   | { status: 'downloaded' }
+  | { status: 'unsupported' }
   | { status: 'error' }
 
 export type DesktopUpdateCommand =

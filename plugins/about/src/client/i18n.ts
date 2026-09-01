@@ -23,6 +23,7 @@ export type AboutMessage =
   | 'about.update-state.open-updater'
   | 'about.update-state.downloading'
   | 'about.update-state.downloaded'
+  | 'about.update-state.unsupported'
   | 'about.update-state.error'
   | 'about.footer.github'
   | 'about.footer.license'
@@ -54,6 +55,7 @@ export const ABOUT_MESSAGES: Record<'en' | 'zh', Record<AboutMessage, string>> =
     'about.update-state.open-updater': 'Open updater',
     'about.update-state.downloading': 'Downloading in the update window...',
     'about.update-state.downloaded': 'Update ready — finish it in the update window.',
+    'about.update-state.unsupported': 'This development build does not support automatic updates.',
     'about.update-state.error': 'The last check failed. Try again.',
     'about.footer.github': 'GitHub',
     'about.footer.license': 'License',
@@ -84,6 +86,7 @@ export const ABOUT_MESSAGES: Record<'en' | 'zh', Record<AboutMessage, string>> =
     'about.update-state.open-updater': '打开更新',
     'about.update-state.downloading': '正在更新窗口中下载…',
     'about.update-state.downloaded': '更新已就绪——请在更新窗口中完成安装。',
+    'about.update-state.unsupported': '此开发版不支持自动更新。',
     'about.update-state.error': '上次检查失败，请重试。',
     'about.footer.github': 'GitHub',
     'about.footer.license': '许可证',

@@ -597,7 +597,7 @@ function aboutUpdateSnapshot(state: DesktopUpdateState): AboutUpdateSnapshot {
     case 'downloaded': return { status: 'downloaded' }
     case 'scheduled': return { status: 'downloaded' }
     case 'cancelled': return { status: 'idle', currentVersion: state.currentVersion }
-    case 'unsupported': return { status: 'idle', currentVersion: state.currentVersion }
+    case 'unsupported': return { status: 'unsupported' }
     case 'error': return state.retryable === true && state.stage === 'check'
       ? { status: 'error' }
       : { status: 'idle', currentVersion: state.currentVersion }

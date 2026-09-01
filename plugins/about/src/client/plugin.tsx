@@ -147,6 +147,7 @@ function updateCopy(snapshot: AboutUpdateSnapshot | null, t: Translate<AboutMess
     case 'available': return { status: t('about.update-state.available', { version: snapshot.latestVersion }), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
     case 'downloading': return { status: t('about.update-state.downloading'), action: null, openUpdater: false, ok: false }
     case 'downloaded': return { status: t('about.update-state.downloaded'), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
+    case 'unsupported': return { status: t('about.update-state.unsupported'), action: null, openUpdater: false, ok: false }
     case 'error': return { status: t('about.update-state.error'), action: t('about.update-button'), openUpdater: false, ok: false }
     default: return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: false, ok: false }
   }
