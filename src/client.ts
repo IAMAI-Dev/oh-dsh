@@ -341,6 +341,41 @@ html[data-oh-dsh-desktop='true']:has(
   position: relative;
 }
 
+/* Portal overlays that hand the document a bare top-level dialog own their
+   own fixed chrome, and pinned upstream UI parks its lightbox close button
+   20px below the viewport top — inside the in-page titlebar row this surface
+   reserves on macOS and Windows, where the opaque strip paints over anything
+   below its z-index and half the control disappears. Structure, not classes:
+   the pinned runtime is hashed per build, so the contract is "a body-level
+   modal dialog's direct close button". macOS shares the reserved row; Linux
+   keeps its native frame and Web never loads the chrome stylesheet.
+
+   The lightbox backdrop keeps upstream's 40px gutter width but restores
+   its symmetry below the reserved row: uniform 40px on all four sides,
+   laid out inside the region under the strip (the strip replaces the top
+   gutter the viewport used to provide), and the image's own 100vh-based
+   ceiling shrinks by the titlebar and the gutters so tall previews never
+   re-overflow behind the strip. The close button rides the same gutter
+   grid at its corner. Upstream styles load after this sheet and win ties
+   at equal specificity, so the rules carry !important — the same
+   authority the sheet's dialog demotion rules already rely on. */
+html[data-oh-dsh-desktop-platform='darwin'] body > [role='dialog'][aria-modal='true'],
+html[data-oh-dsh-desktop-platform='win32'] body > [role='dialog'][aria-modal='true'] {
+  top: var(--oh-dsh-titlebar-height, 40px) !important;
+  padding: 40px !important;
+}
+
+html[data-oh-dsh-desktop-platform='darwin'] body > [role='dialog'][aria-modal='true'] > img,
+html[data-oh-dsh-desktop-platform='win32'] body > [role='dialog'][aria-modal='true'] > img {
+  max-height: calc(100vh - var(--oh-dsh-titlebar-height, 40px) - 80px) !important;
+}
+
+html[data-oh-dsh-desktop-platform='darwin'] body > [role='dialog'][aria-modal='true'] > button,
+html[data-oh-dsh-desktop-platform='win32'] body > [role='dialog'][aria-modal='true'] > button {
+  top: calc(var(--oh-dsh-titlebar-height, 40px) + 8px) !important;
+  right: 8px !important;
+}
+
 `
 
 /** Wait for the DSH services used by native menu commands. */
