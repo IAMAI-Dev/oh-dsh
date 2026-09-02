@@ -56,19 +56,23 @@ export type DesktopUpdateState =
   | { status: 'error'; currentVersion: string; stage: 'check' | 'download' | 'verify' | 'install'; code: string; message: string; releaseUrl: string | null; retryable: boolean }
 
 /**
- * The About page's read-mostly projection of the update state: enough to
- * answer "is there an update?" and link to the update window, never enough
- * to drive downloads or installs from the main window.
+ * The About page's inline update flow: check, download with progress, and
+ * install, all driven from the About card. This deliberately mirrors the
+ * update window's user-visible states; the window itself stays available
+ * through `openUpdater` for the full presentation.
  */
 export type AboutUpdateSnapshot =
   | { status: 'idle'; currentVersion: string }
   | { status: 'checking' }
   | { status: 'not-available'; latestVersion: string }
   | { status: 'available'; latestVersion: string }
-  | { status: 'downloading' }
-  | { status: 'downloaded' }
+  | { status: 'downloading'; percent: number; transferred: number; total: number; bytesPerSecond: number }
+  | { status: 'downloaded'; latestVersion: string }
   | { status: 'unsupported' }
   | { status: 'error' }
+
+/** The only update commands the About page may drive. */
+export type AboutUpdateCommand = 'check' | 'download' | 'install-now'
 
 export type DesktopUpdateCommand =
   | { type: 'check' }
@@ -106,12 +110,14 @@ export interface DesktopBridge {
   /** Open the software update window (check/download/install entry). */
   openUpdater(): Promise<void>
   /**
-   * Narrow About-page view of the update state: read-only summary plus a
-   * check trigger. Downloads and installs stay inside the update window.
+   * Inline update flow for the About page: check, download with progress,
+   * and install. Mirrors the update window's user-visible states; the
+   * window itself stays available through `openUpdater`.
    */
   aboutUpdate: {
     getSnapshot(): Promise<AboutUpdateSnapshot>
     check(): Promise<AboutUpdateSnapshot>
+    command(command: AboutUpdateCommand): Promise<AboutUpdateSnapshot>
     onState(listener: (snapshot: AboutUpdateSnapshot) => void): () => void
   }
   onCommand(listener: (command: DesktopCommand) => void): () => void

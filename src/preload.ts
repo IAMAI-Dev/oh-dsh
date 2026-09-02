@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AboutUpdateSnapshot, DesktopBridge, DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot, DesktopWindowState } from './contracts.ts'
+import type { AboutUpdateCommand, AboutUpdateSnapshot, DesktopBridge, DesktopCommand, DesktopInfo, DesktopRuntimeSnapshot, DesktopWindowState } from './contracts.ts'
 import type { MarketplaceCommand, MarketplaceSnapshot } from '../plugins/plugin-marketplace/src/protocol.ts'
 
 const bridge: DesktopBridge = Object.freeze({
@@ -31,6 +31,9 @@ const bridge: DesktopBridge = Object.freeze({
     },
     check: async (): Promise<AboutUpdateSnapshot> => {
       return await ipcRenderer.invoke('desktop:about-update:check') as AboutUpdateSnapshot
+    },
+    command: async (command: AboutUpdateCommand): Promise<AboutUpdateSnapshot> => {
+      return await ipcRenderer.invoke('desktop:about-update:command', command) as AboutUpdateSnapshot
     },
     onState: (listener: (snapshot: AboutUpdateSnapshot) => void): (() => void) => {
       const wrapped = (_event: Electron.IpcRendererEvent, snapshot: AboutUpdateSnapshot): void => { listener(snapshot) }

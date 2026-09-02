@@ -58,19 +58,24 @@ test('desktop About opens the gated update window through one IPC', () => {
   assert.match(main, /assertUpdateWindowSender/)
 })
 
-test('the About update card uses a read-mostly check-only projection', () => {
+test('the About update card drives the inline check/download/install flow', () => {
   const contracts = read('src/contracts.ts')
   assert.match(contracts, /type AboutUpdateSnapshot/)
+  assert.match(contracts, /type AboutUpdateCommand = 'check' \| 'download' \| 'install-now'/)
   const main = read('src/main.ts')
-  for (const channel of ['desktop:about-update:get-state', 'desktop:about-update:check']) {
+  for (const channel of ['desktop:about-update:get-state', 'desktop:about-update:check', 'desktop:about-update:command']) {
     assert.match(main, new RegExp(channel), `missing About update channel ${channel}`)
   }
-  // Downloads and installs stay behind the update window's gate: no About
-  // channel may forward a download/install command.
-  assert.doesNotMatch(main, /desktop:about-update:command/)
+  // The About command surface is limited to the three inline steps: the
+  // parse guard must reject every other update command.
+  assert.match(main, /parseAboutUpdateCommand/)
+  assert.match(main, /\['check', 'download', 'install-now'\]/)
+  assert.doesNotMatch(main, /desktop:about-update:download|desktop:about-update:install/)
   const about = read('plugins/about/src/client/plugin.tsx')
   assert.match(about, /projection\.check\(\)/)
-  assert.doesNotMatch(about, /\.download\(\)|\.installNow\(\)/)
+  assert.match(about, /projection\.command\(command\)/)
+  // Only the three allow-listed commands may reach projection.command.
+  assert.doesNotMatch(about, /command\('(?!check|download|install-now)/)
 })
 
 test('about styles follow the DSH theme instead of hard-coded colors', () => {

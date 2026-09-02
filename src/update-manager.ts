@@ -10,6 +10,8 @@ import type {
 const OFFICIAL_REPOSITORY = 'hust-open-atom-club/oh-dsh'
 const OFFICIAL_RELEASES_URL = `https://github.com/${OFFICIAL_REPOSITORY}/releases`
 const OFFICIAL_RELEASE_BASE = `https://github.com/${OFFICIAL_REPOSITORY}/releases/tag/`
+/** GitHub release download mirror used as a fallback when GitHub is unreachable. */
+const RELEASE_MIRROR_GENERIC_BASE = `https://gh-proxy.cn/https://github.com/${OFFICIAL_REPOSITORY}/releases/latest/download/`
 
 export interface UpdateEventSource {
   autoDownload: boolean
@@ -17,6 +19,8 @@ export interface UpdateEventSource {
   allowPrerelease: boolean
   allowDowngrade: boolean
   disableDifferentialDownload: boolean
+  /** Point the updater at a different feed (e.g. a release mirror). */
+  setFeedURL?(options: unknown): void
   checkForUpdates(): Promise<{ isUpdateAvailable: boolean; updateInfo: UpdateInfo } | null>
   downloadUpdate(token?: CancellationToken): Promise<string[]>
   quitAndInstall(isSilent?: boolean, isForceRunAfter?: boolean): void
@@ -159,6 +163,12 @@ function isProxyFailure(code: string): boolean {
   return PROXY_FAILURE_CODES.has(code)
 }
 
+/** Network-level failures worth retrying against the release mirror. */
+function isNetworkError(error: unknown): boolean {
+  const code = errorCode(error)
+  return code.startsWith('ERR_') && code !== 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND'
+}
+
 function isRetryable(error: unknown, stage: Operation): boolean {
   if (stage === 'verify' || stage === 'install') return false
   const code = errorCode(error)
@@ -193,6 +203,7 @@ export class DesktopUpdateManager {
   private operation: Operation = 'check'
   private lastCheck: Promise<DesktopUpdateState> | undefined
   private proxyBypassed = false
+  private mirrorTried = false
   private installOnQuitRequested = false
   private readonly listeners = new Set<(state: DesktopUpdateState) => void>()
   private readonly eventListeners: Array<[string, (...args: any[]) => void]> = []
@@ -295,6 +306,24 @@ export class DesktopUpdateManager {
       }
       return this.prepareAvailable(result.updateInfo)
     } catch (error) {
+      // GitHub unreachable (common behind hostile networks): fall back once to
+      // the release download mirror before surfacing the network error.
+      if (!this.mirrorTried && updater.setFeedURL !== undefined && isNetworkError(error)) {
+        this.mirrorTried = true
+        this.onLog?.('github update feed unreachable; retrying via release mirror')
+        updater.setFeedURL({ provider: 'generic', url: RELEASE_MIRROR_GENERIC_BASE })
+        try {
+          const mirrored = await this.runWithProxyFallback(() => updater.checkForUpdates())
+          if (mirrored !== null) {
+            if (!mirrored.isUpdateAvailable) {
+              return this.publish({ status: 'not-available', currentVersion: this.currentVersion, checkedVersion: mirrored.updateInfo.version })
+            }
+            return this.prepareAvailable(mirrored.updateInfo)
+          }
+        } catch (mirrorError) {
+          this.onLog?.(`release mirror check also failed: ${errorMessage(mirrorError)}`)
+        }
+      }
       return this.fail(error, 'check')
     }
   }

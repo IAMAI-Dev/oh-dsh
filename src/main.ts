@@ -44,6 +44,7 @@ import {
   type DesktopUpdateCommand,
   type DesktopWindowState,
   type DesktopUpdateState,
+  type AboutUpdateCommand,
   type AboutUpdateSnapshot,
 } from './contracts.ts'
 import type { OhDshLocale } from '../plugins/shared/i18n.ts'
@@ -586,22 +587,36 @@ function assertUpdateWindowSender(event: { sender: Electron.WebContents }): void
   }
 }
 
-/** Project the full update state down to the About page's read-mostly view. */
+/** Project the full update state down to the About page's inline flow. */
 function aboutUpdateSnapshot(state: DesktopUpdateState): AboutUpdateSnapshot {
   switch (state.status) {
     case 'idle': return { status: 'idle', currentVersion: state.currentVersion }
     case 'checking': return { status: 'checking' }
     case 'not-available': return { status: 'not-available', latestVersion: state.checkedVersion }
     case 'available': return { status: 'available', latestVersion: state.latestVersion }
-    case 'downloading': return { status: 'downloading' }
-    case 'downloaded': return { status: 'downloaded' }
-    case 'scheduled': return { status: 'downloaded' }
+    case 'downloading': return {
+      status: 'downloading',
+      percent: state.percent,
+      transferred: state.transferred,
+      total: state.total,
+      bytesPerSecond: state.bytesPerSecond,
+    }
+    case 'downloaded': return { status: 'downloaded', latestVersion: state.latestVersion }
+    case 'scheduled': return { status: 'downloaded', latestVersion: state.latestVersion }
     case 'cancelled': return { status: 'idle', currentVersion: state.currentVersion }
     case 'unsupported': return { status: 'unsupported' }
     case 'error': return state.retryable === true && state.stage === 'check'
       ? { status: 'error' }
       : { status: 'idle', currentVersion: state.currentVersion }
   }
+}
+
+/** Parse an About-page update command. Only the inline flow's commands. */
+function parseAboutUpdateCommand(raw: unknown): AboutUpdateCommand {
+  if (typeof raw !== 'string' || !(['check', 'download', 'install-now'] as const).includes(raw as AboutUpdateCommand)) {
+    throw new Error('invalid about-update command')
+  }
+  return raw as AboutUpdateCommand
 }
 
 function parseUpdateCommand(raw: unknown): DesktopUpdateCommand {
@@ -1261,9 +1276,9 @@ function installIpc(): void {
     return desktopInfo(preview)
   })
   ipcMain.handle('desktop:get-runtime-snapshot', () => desktopRuntimeSnapshot())
-  // The About settings page reuses the isolated update window; the update
-  // state and command channels stay gated to that window. About gets a
-  // read-mostly projection: snapshot + check only, no download/install.
+  // The About settings page drives the inline update flow: check, download
+  // with progress, and install. The update window keeps its own full gated
+  // channels; About's command set is limited to the three inline steps.
   ipcMain.handle('desktop:open-updater', event => {
     if (event.sender !== mainWindow?.webContents) throw new Error('untrusted updater sender')
     void openUpdateWindow()
@@ -1275,6 +1290,21 @@ function installIpc(): void {
   ipcMain.handle('desktop:about-update:check', async event => {
     if (event.sender !== mainWindow?.webContents) throw new Error('untrusted about-update sender')
     return aboutUpdateSnapshot(await (await getUpdateManager()).check())
+  })
+  ipcMain.handle('desktop:about-update:command', async (event, raw: unknown) => {
+    if (event.sender !== mainWindow?.webContents) throw new Error('untrusted about-update sender')
+    const command = parseAboutUpdateCommand(raw)
+    const manager = await getUpdateManager()
+    if (command === 'install-now') {
+      const current = manager.getState()
+      if (current.status !== 'downloaded') throw new Error('no downloaded update to install')
+      if (current.platform === 'deb') throw new Error('deb installers finish in the system package manager')
+      return aboutUpdateSnapshot(await scheduleImmediateUpdateInstall(manager, () => {
+        quittingForUpdate = true
+        app.quit()
+      }))
+    }
+    return aboutUpdateSnapshot(await manager.command({ type: command }))
   })
   ipcMain.handle('desktop:plugin-marketplace-snapshot', (event) => {
     if (event.sender !== mainWindow?.webContents) throw new Error('untrusted marketplace sender')

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AboutUpdateSnapshot, DesktopBridge } from '../../../../src/contracts.ts'
+import type { AboutUpdateCommand, AboutUpdateSnapshot, DesktopBridge } from '../../../../src/contracts.ts'
 import type { LocaleService, Translate } from '../../../shared/i18n.ts'
 import aboutCss from './about.css'
 import { ABOUT_MESSAGES, type AboutMessage } from './i18n.ts'
@@ -99,12 +99,12 @@ function IconChip({ path }: { path: string }): JSX.Element {
 interface AboutUpdateView {
   snapshot: AboutUpdateSnapshot | null
   busy: boolean
-  check(): void
+  run(command: AboutUpdateCommand): void
 }
 
 /**
- * Subscribe to the desktop update state's narrow About projection. Web has
- * no desktop bridge and renders no update card at all; a desktop bridge
+ * Subscribe to the desktop update state's inline About flow. Web has no
+ * desktop bridge and renders no update card at all; a desktop bridge
  * without the projection (older main process) renders the legacy button.
  */
 function useAboutUpdate(desktop: DesktopBridge | undefined): AboutUpdateView | null {
@@ -127,46 +127,77 @@ function useAboutUpdate(desktop: DesktopBridge | undefined): AboutUpdateView | n
   if (projection === undefined) return null
   return {
     snapshot,
-    busy: snapshot?.status === 'checking' || busy,
-    check: () => {
+    busy: snapshot?.status === 'checking' || snapshot?.status === 'downloading' || busy,
+    run: (command: AboutUpdateCommand): void => {
+      if (command === 'download' || command === 'install-now') {
+        // Long-running steps publish their own states through onState.
+        setBusy(true)
+        void projection.command(command)
+          .then(next => { setSnapshot(next) })
+          .finally(() => { setBusy(false) })
+        return
+      }
       setBusy(true)
       void projection.check().finally(() => { setBusy(false) })
     },
   }
 }
 
+/** Byte/progress formatters mirroring the update window's presentation. */
+function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '—'
+  if (bytes < 1024) return `${bytes} B`
+  const units = ['KB', 'MB', 'GB']
+  let value = bytes / 1024
+  let unit = units[0]!
+  for (let index = 0; value >= 1024 && index < units.length - 1; index += 1) {
+    value /= 1024
+    unit = units[index + 1]!
+  }
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`
+}
+
 /** Copy + button state for one AboutUpdateSnapshot. The button always does
- * what its label says: "Check for updates" runs the inline check, and only
- * the explicit "Open updater" label opens the window — even when a startup
- * check already knows an update is available. */
-function updateCopy(snapshot: AboutUpdateSnapshot | null, t: Translate<AboutMessage>): { status: string; action: string | null; openUpdater: boolean; ok: boolean } {
-  if (snapshot === null) return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: false, ok: false }
+ * what its label says: "Check for updates" runs the inline check, "Download
+ * update" starts the inline download, "Install update" quits and installs.
+ * The status line shows download progress while downloading. */
+function updateCopy(snapshot: AboutUpdateSnapshot | null, t: Translate<AboutMessage>): { status: string; action: string | null; command: AboutUpdateCommand | null; ok: boolean } {
+  if (snapshot === null) return { status: t('about.update-hint'), action: t('about.update-button'), command: 'check', ok: false }
   switch (snapshot.status) {
-    case 'checking': return { status: t('about.update-state.checking'), action: null, openUpdater: false, ok: false }
-    case 'not-available': return { status: t('about.update-state.up-to-date'), action: t('about.update-button'), openUpdater: false, ok: true }
-    case 'available': return { status: t('about.update-state.available', { version: snapshot.latestVersion }), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
-    case 'downloading': return { status: t('about.update-state.downloading'), action: null, openUpdater: false, ok: false }
-    case 'downloaded': return { status: t('about.update-state.downloaded'), action: t('about.update-state.open-updater'), openUpdater: true, ok: false }
-    case 'unsupported': return { status: t('about.update-state.unsupported'), action: null, openUpdater: false, ok: false }
-    case 'error': return { status: t('about.update-state.error'), action: t('about.update-button'), openUpdater: false, ok: false }
-    default: return { status: t('about.update-hint'), action: t('about.update-button'), openUpdater: false, ok: false }
+    case 'checking': return { status: t('about.update-state.checking'), action: null, command: null, ok: false }
+    case 'not-available': return { status: t('about.update-state.up-to-date'), action: t('about.update-button'), command: 'check', ok: true }
+    case 'available': return { status: t('about.update-state.available', { version: snapshot.latestVersion }), action: t('about.update-state.download'), command: 'download', ok: false }
+    case 'downloading': return {
+      status: t('about.update-state.progress', {
+        percent: snapshot.percent.toFixed(1),
+        transferred: formatBytes(snapshot.transferred),
+        total: formatBytes(snapshot.total),
+      }),
+      action: null,
+      command: null,
+      ok: false,
+    }
+    case 'downloaded': return { status: t('about.update-state.ready', { version: snapshot.latestVersion }), action: t('about.update-state.install'), command: 'install-now', ok: false }
+    case 'unsupported': return { status: t('about.update-state.unsupported'), action: null, command: null, ok: false }
+    case 'error': return { status: t('about.update-state.error'), action: t('about.update-button'), command: 'check', ok: false }
+    default: return { status: t('about.update-hint'), action: t('about.update-button'), command: 'check', ok: false }
   }
 }
 
-/** The software-update card: inline check with state, opening the trusted
- * update window for downloads and installs. */
+/** The software-update card: a complete inline flow — check, download with
+ * progress, then quit-and-install — driven from the About page. */
 function UpdateCard({ desktop, openUpdater, t }: { desktop: DesktopBridge | undefined; openUpdater: () => void; t: Translate<AboutMessage> }): JSX.Element {
   const view = useAboutUpdate(desktop)
   const snapshot = view?.snapshot ?? null
-  const copy = updateCopy(view !== null ? snapshot : null, t)
+  const copy = updateCopy(snapshot, t)
   const chipClass = copy.ok ? 'oh-dsh-about-chip oh-dsh-about-chip-ok' : 'oh-dsh-about-chip'
-  const checking = view !== null && (view.busy || snapshot?.status === 'checking')
+  const downloading = snapshot?.status === 'downloading'
   const onAction = (): void => {
-    if (copy.openUpdater) { openUpdater(); return }
-    if (checking) return
+    if (copy.command === null || checking) return
     if (view === null) { openUpdater(); return }
-    view.check()
+    view.run(copy.command)
   }
+  const checking = view !== null && view.busy && !downloading
   return (
     <section className="oh-dsh-about-group">
       <h4>{t('about.section.update')}</h4>
@@ -182,7 +213,7 @@ function UpdateCard({ desktop, openUpdater, t }: { desktop: DesktopBridge | unde
           {copy.action !== null && (
             <button
               className="oh-dsh-about-button"
-              disabled={checking && !copy.openUpdater}
+              disabled={checking}
               type="button"
               onClick={onAction}
             >
