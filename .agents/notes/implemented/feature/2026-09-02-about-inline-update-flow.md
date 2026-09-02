@@ -61,10 +61,16 @@ download as an explicit button step, matching the requested interaction.
 - The main window can now trigger downloads and installs — the earlier
   note's central guarantee ("the main window cannot start downloads") is
   superseded. The boundary that remains: the updater's feed stays
-  GitHub-only with a release-mirror retry (`gh-proxy` generic provider)
+  GitHub-only with a release-mirror detour (`gh-proxy` generic provider)
   when GitHub is unreachable, downloads are verified by electron-updater's
   signature/checksum checks, and install runs through the same
   quit-and-staged-installer path as the update window.
+- The mirror serves exactly one update cycle (the fallback check plus its
+  download); the next check restores the GitHub feed, so a transient
+  outage cannot pin the client to the third-party mirror. Mirror retries
+  also cover Node-style network codes (`ENOTFOUND`, `ETIMEDOUT`, ...),
+  not only Chromium's `ERR_*` codes; local-environment failures such as
+  `ENOSPC` never trigger it.
 - The update window continues to work unchanged with its own channels;
   both surfaces observe the same manager, so states stay consistent.
 - `tests/about-page.test.ts` pins the closed command set

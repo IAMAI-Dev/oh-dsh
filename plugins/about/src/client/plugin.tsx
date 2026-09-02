@@ -80,6 +80,16 @@ function productVersion(): string {
     : '0.0.0'
 }
 
+/** Desktop shells open links externally; Web falls back to a new tab. */
+function openExternal(url: string): void {
+  if (typeof window !== 'undefined' && window.dshDesktop !== undefined) {
+    void window.dshDesktop.openExternal(url)
+    return
+  }
+  const open = (globalThis as { open?: (target: string, name?: string, features?: string) => unknown }).open
+  if (typeof open === 'function') open(url, '_blank', 'noopener,noreferrer')
+}
+
 function installSettingsStyles(): () => void {
   const style = document.createElement('style')
   style.setAttribute(SETTINGS_STYLE_ATTRIBUTE, 'true')
@@ -335,13 +345,13 @@ function AboutSectionRow({ openUpdater, t }: AboutRowProps): JSX.Element {
       <footer className="oh-dsh-about-footer">
         <div className="oh-dsh-about-links">
           <button className="oh-dsh-about-link" type="button"
-            onClick={() => { void desktop?.openExternal(GITHUB_URL) }}>
+            onClick={() => { openExternal(GITHUB_URL) }}>
             <Icon path={ICON_CODE} size={13} />
             {t('about.footer.github')}
           </button>
           <span className="oh-dsh-about-separator">|</span>
           <button className="oh-dsh-about-link" type="button"
-            onClick={() => { void desktop?.openExternal(LICENSE_URL) }}>
+            onClick={() => { openExternal(LICENSE_URL) }}>
             <Icon path={ICON_PACKAGE} size={13} />
             {t('about.footer.license')}
           </button>

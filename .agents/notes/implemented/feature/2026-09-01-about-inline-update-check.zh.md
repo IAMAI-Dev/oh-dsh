@@ -20,13 +20,15 @@ Status: implemented
 （触发检查）和 `desktop:about-update:state` 推送（镜像变化）。三者都限定
 为主窗口 webContents 发送方，与 marketplace 通道同款门禁。投影类型
 `AboutUpdateSnapshot` 只保留页面渲染所需的信息——状态、当前/最新版本、
-错误——刻意省略 release notes、下载进度以及 `check` 之外的一切命令。
+错误——最初刻意省略 release notes、下载进度以及 `check` 之外的一切命令。
+（后来的[内联更新流程](2026-09-02-about-inline-update-flow.md)为投影补上
+了下载进度和封闭命令集；本记录保留最初的接缝设计。）
 
 `window.dshDesktop.aboutUpdate` 承载这三个调用；About 页的更新卡片渲染
-内联状态行与状态驱动按钮：空闲或检查失败时显示"检查更新"；检查进行中显示
-禁用的"正在检查…"；发现更新或已下载时显示"打开更新"（下载与安装仍然只发生
-在沙箱更新窗口内）；无更新时显示"已是最新版本"。Web 没有桌面 bridge，
-照旧不渲染更新卡片。
+内联状态行与状态驱动按钮：空闲或检查失败时显示"检查更新"；检查或下载
+进行中不显示操作按钮；无更新时显示"已是最新版本"。下载与安装最初仍只
+发生在沙箱更新窗口内，现按上述后续记录在页面内完成。Web 没有桌面
+bridge，照旧不渲染更新卡片。
 
 ## Alternatives considered
 
@@ -43,17 +45,18 @@ Status: implemented
 
 ## Consequences
 
-- About 页现在在页面内满足 #178 的"无更新时给出明确状态"标准：
-  idle/checking/最新/可更新/错误全部内联渲染，`available`/`downloaded`
-  深链到承载特权操作的更新窗口。
+- About 页在页面内满足 #178 的"无更新时给出明确状态"标准：
+  idle/checking/最新/可更新/错误全部内联渲染。（`available`/`downloaded`
+  最初深链到承载特权操作的更新窗口；后来的[内联更新流程](2026-09-02-about-inline-update-flow.md)
+  取代了该决策，卡片可在页面内下载并安装。）
 - 新增三条主窗口 IPC 通道，均限定主窗口发送方；更新窗口自身的通道仍是
-  独占。投影无法发起下载或安装。
+  独占。只读投影最初无法发起下载或安装——直到上述后续记录加入了封闭的
+  `desktop:about-update:command` 通道（`check`、`download`、`install-now`）。
 - 投影折叠了更新窗口的若干状态（`scheduled` → `downloaded`、
   `cancelled`/`unsupported`/终态 `error` → `idle`），卡片不会出现死胡同；
   完整状态机仍由更新窗口承载。
-- `tests/about-page.test.ts` 锚定投影：两条通道存在、不得出现
-  `desktop:about-update:command`、插件源码只调用 `check`，
-  永不调用 download/install。
+- `tests/about-page.test.ts` 最初锚定：两条通道存在、插件源码只调用
+  `check`；后续记录放宽了命令集。
 
 ## Testing
 

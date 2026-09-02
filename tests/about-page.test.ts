@@ -89,6 +89,15 @@ test('about styles follow the DSH theme instead of hard-coded colors', () => {
   }
 })
 
+test('about footer links work on Web without a desktop bridge', () => {
+  const about = read('plugins/about/src/client/plugin.tsx')
+  assert.match(about, /function openExternal\(url: string\): void/)
+  // Desktop goes through the bridge; Web falls back to a sandboxed new tab.
+  assert.match(about, /window\.dshDesktop\.openExternal\(url\)/)
+  assert.match(about, /open\(url, '_blank', 'noopener,noreferrer'\)/)
+  assert.doesNotMatch(about, /void desktop\?\.openExternal\(/)
+})
+
 test('both surfaces mount the About plugin', () => {
   for (const patch of ['cordis.patch.yml', 'web/cordis.patch.yml']) {
     assert.match(read(patch), /id: oh-about/)

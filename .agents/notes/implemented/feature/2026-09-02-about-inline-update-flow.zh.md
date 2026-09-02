@@ -50,9 +50,13 @@ About 卡片把流程渲染为一个状态机："检查更新"（idle / 无更�
   一张卡片内完成。
 - 主窗口现在可以触发下载与安装——早前决策的核心保证（"主窗口无法发起
   下载"）被本决策取代。仍然保留的边界：更新源仍为 GitHub-only，不可达时
-  经 release 镜像（gh-proxy generic provider）重试一次；下载经
+  经 release 镜像（gh-proxy generic provider）绕行；下载经
   electron-updater 的签名/校验和验证；安装走与更新窗口相同的
   退出加暂存安装程序路径。
+- 镜像只服务一个更新周期（回退检查及其下载）；下一次检查会还原 GitHub
+  更新源，瞬时的网络故障不会把客户端长期钉在第三方镜像上。镜像重试同时
+  覆盖 Node 风格的网络错误码（`ENOTFOUND`、`ETIMEDOUT` 等），而不只是
+  Chromium 的 `ERR_*`；磁盘满之类的本机故障（`ENOSPC`）不会触发重试。
 - 更新窗口及其通道不受影响地继续工作；两者观察同一 manager，状态保持
   一致。
 - `tests/about-page.test.ts` 锚定封闭命令集

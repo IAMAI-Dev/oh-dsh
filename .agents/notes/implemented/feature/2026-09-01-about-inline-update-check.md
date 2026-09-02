@@ -24,16 +24,20 @@ the main window: `desktop:about-update:get-state` (snapshot),
 `desktop:about-update:state` push that mirrors changes. All three are
 gated to the main window's webContents, mirroring the marketplace
 channels. The projection type, `AboutUpdateSnapshot`, keeps only what the
-page renders — status, current/latest version, error — and deliberately
-omits release notes, download progress, and every command but `check`.
+page renders — status, current/latest version, error — and originally
+omitted release notes, download progress, and every command but `check`.
+(The later [inline update flow
+note](2026-09-02-about-inline-update-flow.md) widened the projection with
+download progress and a closed command set; this note records the original
+seam.)
 
 `window.dshDesktop.aboutUpdate` carries the three calls; the About page's
 update card renders an inline status line and a state-driven button:
-"Check for updates" when idle or after a failed check, disabled
-"Checking..." while in flight, "Open updater" when an update is available
-or downloaded (downloads and installs still happen only inside the
-sandboxed update window), and an up-to-date notice when nothing is
-offered. Web renders no update card (no desktop bridge), as before.
+"Check for updates" when idle or after a failed check, no button while a
+check or download is in flight, and an up-to-date notice when nothing is
+offered. Downloads and installs originally happened only inside the
+sandboxed update window; they now run inline per the note above. Web
+renders no update card (no desktop bridge), as before.
 
 ## Alternatives considered
 
@@ -54,20 +58,26 @@ chooses when to leave the page.
 
 ## Consequences
 
-- The About page now satisfies #178's "explicit status when no update"
-  criterion in place: idle/checking/up-to-date/available/error are all
-  rendered inline, and `available`/`downloaded` deep-link to the update
-  window where the privileged actions live.
-- Three new main-window IPC channels exist, each sender-checked to the
-  main window; the update window's own channels remain exclusively its
-  own. The projection cannot start downloads or installs.
+- The About page satisfied #178's "explicit status when no update"
+  criterion in place: idle/checking/up-to-date/available/error were all
+  rendered inline. (`available`/`downloaded` initially deep-linked to the
+  update window; the later [inline update flow
+  note](2026-09-02-about-inline-update-flow.md) superseded this decision
+  and let the card download and install itself.)
+- Three new main-window IPC channels existed, each sender-checked to the
+  main window; the update window's own channels remained exclusively its
+  own. The read-mostly projection could not start downloads or installs —
+  until the inline update flow note above added the closed
+  `desktop:about-update:command` surface (`check`, `download`,
+  `install-now`).
 - The projection collapses several update-window states
   (`scheduled` → `downloaded`, `cancelled`/`unsupported`/terminal `error`
   → `idle`) so the card never shows a dead end; the update window keeps
   the full state machine.
-- `tests/about-page.test.ts` pins the projection: the two channels exist,
-  no `desktop:about-update:command` may exist, and the plugin sources call
-  only `check`, never download/install.
+- `tests/about-page.test.ts` pinned the projection: the two channels
+  exist, and the plugin sources called only `check`, never
+  download/install — until the inline update flow note widened the
+  command set.
 
 ## Testing
 

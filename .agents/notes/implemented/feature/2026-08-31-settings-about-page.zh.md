@@ -20,11 +20,10 @@ DeepSeek Harness 版本（`dsh-source.json`）、内置插件版本
 命名空间 `oh-dsh.about`）。分区渲染居中的 hero（品牌标识、产品名、副标题、
 版本徽章）、展示上游 DSH 固定版本及其 npm 包的「运行时信息」卡片、带两张
 可展开行（内置插件、关键依赖，点开 chevron 展示版本表）的「组件」卡片、
-带内联「检查更新」按钮的「软件更新」卡片，以及带 GitHub 与许可证链接的页
-脚。所有颜色均来自 DSH 主题 token（`--dsw-alias-brand-primary`、
-`--dsw-alias-state-success-*`、label/border/background 系列 alias），页面
-跟随当前主题与深色模式；只有 `var()` 回退值携带字面量 hex。Desktop 端右
-上角还有一个 ghost 按钮用于在文件管理器中打开当前 profile 目录。
+「软件更新」卡片，以及带 GitHub 与许可证链接的页脚。所有颜色均来自 DSH
+主题 token（`--dsw-alias-brand-primary`、`--dsw-alias-state-success-*`、
+label/border/background 系列 alias），页面跟随当前主题与深色模式；只有
+`var()` 回退值携带字面量 hex。
 
 版本数据从不在运行时读取文件。`scripts/build.mjs` 在构建期读取仓库清单，
 在既有 `__OH_DSH_BUILD_VERSION__` 之外注入四个 esbuild `define` 常量：
@@ -38,11 +37,11 @@ submodule 清单，排序后注入）和 `__OH_DSH_DEPENDENCY_VERSIONS__`（根�
 
 Desktop 的更新入口通过一条新的、带发送方校验的 IPC 通道复用既有主进程能
 力：`desktop:open-updater` 校验发送方是主窗口后调用既有的
-`openUpdateWindow()`。更新状态与命令通道仍由 `assertUpdateWindowSender`
-门禁在更新窗口内；About 页面不会收到更新状态。外部链接走既有的
-`openExternal` bridge；本分区不添加配置目录按钮——设置外壳已自带该动作。
-Web 端没有 `window.dshDesktop`，更新卡片和页脚按钮不渲染，hero 与版本卡
-片照常显示。
+`openUpdateWindow()`。（About 更新卡片此后已改走自己的内联通道，见
+[内联更新流程](2026-09-02-about-inline-update-flow.md)。）外部链接走既有
+的 `openExternal` bridge，Web 端回退到 `window.open`；本分区不添加配置目
+录按钮——设置外壳已自带该动作。Web 端没有 `window.dshDesktop`，更新卡片
+不渲染，hero、版本卡片与页脚链接照常显示。
 
 ## Alternatives considered
 
@@ -75,9 +74,10 @@ checkout（CI 的浅克隆和源码包会失败或回退），而且 submodule �
   码；新增一类版本事实（例如 submodule 修订号）才需要扩展
   `aboutVersionDefines` 和插件的 props。
 - 新增一条主窗口 IPC（`desktop:open-updater`），与 marketplace 同类通道
-  一样做发送方校验；更新窗口的隔离完好无损。
-- 测试锁定契约：`tests/about-page.test.ts` 守护分区注册、三个注入常量、
-  带发送方校验的更新 IPC、主题 token 驱动的样式和两个组合层；
+  一样做发送方校验；更新窗口的隔离完好无损。（About 页面此后获得了自己
+  的内联更新通道与封闭命令集；`desktop:open-updater` 保留给旧调用方。）
+- 测试锁定契约：`tests/about-page.test.ts` 守护分区注册、四个注入常量、
+  更新 IPC、主题 token 驱动的样式和两个组合层；
   `tests/stage-runtime-lib.test.ts` 与 `scripts/smoke-web.mjs` 把新包纳入
   surface 清单；`scripts/smoke-runtime.mjs` 通过
   `BUNDLED_DESKTOP_CLIENT_PLUGINS` 端到端验证插件加载。

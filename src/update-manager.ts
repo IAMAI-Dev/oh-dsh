@@ -13,6 +13,13 @@ const OFFICIAL_RELEASE_BASE = `https://github.com/${OFFICIAL_REPOSITORY}/release
 /** GitHub release download mirror used as a fallback when GitHub is unreachable. */
 const RELEASE_MIRROR_GENERIC_BASE = `https://gh-proxy.cn/https://github.com/${OFFICIAL_REPOSITORY}/releases/latest/download/`
 
+/** The packaged GitHub feed, matching app-update.yml's publish configuration. */
+const OFFICIAL_GITHUB_FEED = {
+  provider: 'github',
+  owner: OFFICIAL_REPOSITORY.split('/')[0]!,
+  repo: OFFICIAL_REPOSITORY.split('/')[1]!,
+}
+
 export interface UpdateEventSource {
   autoDownload: boolean
   autoInstallOnAppQuit: boolean
@@ -163,10 +170,29 @@ function isProxyFailure(code: string): boolean {
   return PROXY_FAILURE_CODES.has(code)
 }
 
+/** Chromium-style network failures worth retrying against the release mirror. */
+const CHROMIUM_NETWORK_CODES = /^ERR_(?!UPDATER_)/
+
+/**
+ * Node-style network failures surfaced by electron-updater's net stack.
+ * Deliberately excludes local-environment codes like ENOSPC (disk full),
+ * which a mirror cannot fix.
+ */
+const NODE_NETWORK_CODES = new Set([
+  'EAI_AGAIN',
+  'ECONNABORTED',
+  'ECONNREFUSED',
+  'ECONNRESET',
+  'ENETDOWN',
+  'ENETUNREACH',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+])
+
 /** Network-level failures worth retrying against the release mirror. */
 function isNetworkError(error: unknown): boolean {
   const code = errorCode(error)
-  return code.startsWith('ERR_') && code !== 'ERR_UPDATER_CHANNEL_FILE_NOT_FOUND'
+  return CHROMIUM_NETWORK_CODES.test(code) || NODE_NETWORK_CODES.has(code)
 }
 
 function isRetryable(error: unknown, stage: Operation): boolean {
@@ -204,6 +230,7 @@ export class DesktopUpdateManager {
   private lastCheck: Promise<DesktopUpdateState> | undefined
   private proxyBypassed = false
   private mirrorTried = false
+  private mirrorActive = false
   private installOnQuitRequested = false
   private readonly listeners = new Set<(state: DesktopUpdateState) => void>()
   private readonly eventListeners: Array<[string, (...args: any[]) => void]> = []
@@ -276,6 +303,21 @@ export class DesktopUpdateManager {
     }
   }
 
+  /**
+   * The release mirror is a detour, not a destination: the next check puts
+   * the updater back on GitHub so a transient outage cannot pin the client
+   * to the third-party mirror for its whole lifetime. Restoring at the start
+   * of a check — not right after one — keeps "mirror check, then mirror
+   * download" intact within the same update cycle.
+   */
+  private restoreOfficialFeed(): void {
+    const updater = this.updater
+    if (!this.mirrorActive || updater === undefined) return
+    this.mirrorActive = false
+    this.onLog?.('release mirror cycle complete; restoring the GitHub feed')
+    updater.setFeedURL?.(OFFICIAL_GITHUB_FEED)
+  }
+
   private async performCheck(): Promise<DesktopUpdateState> {
     const updater = this.updater
     if (this.platform === 'unsupported' || updater === undefined) {
@@ -288,6 +330,7 @@ export class DesktopUpdateManager {
       })
     }
     this.operation = 'check'
+    this.restoreOfficialFeed()
     this.publish({ status: 'checking', currentVersion: this.currentVersion })
     try {
       await this.syncProxy?.()
@@ -307,9 +350,12 @@ export class DesktopUpdateManager {
       return this.prepareAvailable(result.updateInfo)
     } catch (error) {
       // GitHub unreachable (common behind hostile networks): fall back once to
-      // the release download mirror before surfacing the network error.
+      // the release download mirror before surfacing the network error. The
+      // mirror stays active for the rest of this update cycle (check through
+      // download) and is restored on the next check.
       if (!this.mirrorTried && updater.setFeedURL !== undefined && isNetworkError(error)) {
         this.mirrorTried = true
+        this.mirrorActive = true
         this.onLog?.('github update feed unreachable; retrying via release mirror')
         updater.setFeedURL({ provider: 'generic', url: RELEASE_MIRROR_GENERIC_BASE })
         try {

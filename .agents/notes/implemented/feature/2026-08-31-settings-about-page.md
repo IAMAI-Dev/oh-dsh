@@ -23,13 +23,12 @@ A pure client plugin, `plugins/about` (`@oh-dsh/about`), registers one
 renders a centered hero (brand mark, product name, subtitle, version badge),
 a Runtime card with the pinned upstream DSH release and its npm package, a
 Components card with two expandable rows (bundled plugins, key dependencies)
-whose chevrons unfold version tables, a Software update card with an inline
-check-for-updates button, and a footer with GitHub and license links. All
-color comes from the DSH theme tokens (`--dsw-alias-brand-primary`,
+whose chevrons unfold version tables, a Software update card, and a footer
+with GitHub and license links. All color comes from the DSH theme tokens
+(`--dsw-alias-brand-primary`,
 `--dsw-alias-state-success-*`, label/border/background aliases) so the page
 follows the active theme and dark mode; only `var()` fallbacks carry literal
-hex values. On Desktop a ghost chip in the top-right corner reveals the
-active profile directory.
+hex values.
 
 Version facts never come from runtime file reads. `scripts/build.mjs` reads
 the repository manifests at build time and injects four esbuild `define`
@@ -45,13 +44,14 @@ never fails the build.
 
 Desktop-only update entry reuses the existing main-process seam through one
 new sender-checked IPC channel: `desktop:open-updater` verifies the sender
-is the main window and calls the existing `openUpdateWindow()`. The update
-state and command channels stay gated to the update window by
-`assertUpdateWindowSender`; the About page never receives update state.
-External links ride the existing `openExternal` bridge, and the section adds
-no config-folder button — the settings shell already owns that action. On
-Web, `window.dshDesktop` is absent, so the update card and footer buttons
-are not rendered while the hero and version cards remain.
+is the main window and calls the existing `openUpdateWindow()`. (The About
+update card itself has since moved to its own inline channels; see
+[inline update flow](2026-09-02-about-inline-update-flow.md).) External
+links ride the existing `openExternal` bridge and fall back to
+`window.open` on Web, and the section adds no config-folder button — the
+settings shell already owns that action. On Web, `window.dshDesktop` is
+absent, so the update card is not rendered while the hero, version cards,
+and footer links remain.
 
 ## Alternatives considered
 
@@ -93,8 +93,10 @@ independently keeps the composition layers free to drop it.
   `aboutVersionDefines` and the plugin's props.
 - One new main-window IPC exists (`desktop:open-updater`), sender-checked
   like its marketplace siblings; the update window's isolation is intact.
+  (The About page has since gained its own inline update channels with a
+  closed command set; `desktop:open-updater` remains for legacy callers.)
 - Tests pin the contract: `tests/about-page.test.ts` guards the section
-  registration, the three injected defines, the sender-checked update IPC,
+  registration, the four injected defines, the update IPC,
   theme-token-driven styling, and both composition layers;
   `tests/stage-runtime-lib.test.ts` and `scripts/smoke-web.mjs` carry the
   new package through the surface manifests, and `scripts/smoke-runtime.mjs`

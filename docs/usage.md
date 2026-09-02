@@ -473,8 +473,11 @@ demand while that window has capacity.
 Settings covers language, models, permissions, Agent presets, plugin config,
 and Oh-DSH skins. Its modal covers and blurs every workspace and sidebar. The
 About section lists this build's versions: Oh-DSH itself, the pinned upstream
-DeepSeek Harness runtime, bundled plugins, and key dependencies. On Desktop it
-also offers a check-for-updates button that opens the software update window.
+DeepSeek Harness runtime, bundled plugins, and key dependencies. On Desktop
+the same section also runs the full update flow — check for updates, download
+with live progress, and install — without leaving the page; if GitHub cannot
+be reached during a check, the updater retries once through a release mirror.
+Web shows the version inventory without the update card.
 
 Choose a skin from Settings on Web or Desktop. In TUI, run `/theme` to select
 the same Deep Current, Jade Circuit, Porcelain, or Ember Dusk palette. The
